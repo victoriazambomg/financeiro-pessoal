@@ -1,0 +1,517 @@
+/* Motor no navegador que espelha as regras de negócio da API (RF01–RF12 e RNF08) */
+
+const STORAGE_KEY = 'financeiro_pessoal_v1';
+const CATEGORIAS_PADRAO = [
+  'Alimentação',
+  'Educação',
+  'Lazer',
+  'Moradia',
+  'Outros',
+  'Salário',
+  'Saúde',
+  'Transporte',
+];
+
+const paraCentavos = (reais) => Math.round(Number(reais) * 100);
+const paraReais = (centavos) => Number((centavos / 100).toFixed(2));
+const formatarBRL = (valor) =>
+  valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+function carregarEstado() {
+  try {
+    const bruto = localStorage.getItem(STORAGE_KEY);
+    if (bruto) {
+      const parsed = JSON.parse(bruto);
+      if (Array.isArray(parsed.categorias) && Array.isArray(parsed.transacoes)) {
+        return parsed;
+      }
+    }
+  } catch (_) {}
+
+  const agora = new Date().toISOString();
+  return {
+    categorias: CATEGORIAS_PADRAO.map((nome, i) => ({
+      id: `cat-${i + 1}`,
+      nome,
+      criadoEm: agora,
+    })),
+    transacoes: [
+      {
+        id: 'demo-1',
+        descricao: 'Salário Mensal',
+        valor: 4500.0,
+        tipo: 'receita',
+        categoria: 'Salário',
+        data: '2026-11-01',
+        criadoEm: agora,
+        atualizadoEm: agora,
+      },
+      {
+        id: 'demo-2',
+        descricao: 'Aluguel e Condomínio',
+        valor: 1450.0,
+        tipo: 'despesa',
+        categoria: 'Moradia',
+        data: '2026-11-03',
+        criadoEm: agora,
+        atualizadoEm: agora,
+      },
+      {
+        id: 'demo-3',
+        descricao: 'Supermercado Semanal',
+        valor: 380.45,
+        tipo: 'despesa',
+        categoria: 'Alimentação',
+        data: '2026-11-05',
+        criadoEm: agora,
+        atualizadoEm: agora,
+      },
+    ],
+  };
+}
+
+let estado = carregarEstado();
+
+function salvarEstado() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
+}
+
+function validarTransacao(dados) {
+  const erros = [];
+  const descricao = String(dados.descricao ?? '').trim();
+  const categoria = String(dados.categoria ?? '').trim();
+  const valor = Number(dados.valor);
+  const tipo = dados.tipo;
+  const data = String(dados.data ?? '');
+
+  if (descricao.length < 1 || descricao.length > 100) {
+    erros.push('descricao é obrigatória e deve ter entre 1 e 100 caracteres.');
+  }
+  if (!Number.isFinite(valor) || valor <= 0) {
+    erros.push('valor deve ser um número maior que zero.');
+  } else if (Math.abs(Math.round(valor * 100) - valor * 100) > 1e-6) {
+    erros.push('valor deve ter no máximo 2 casas decimais.');
+  }
+  if (tipo !== 'receita' && tipo !== 'despesa') {
+    erros.push("tipo deve ser 'receita' ou 'despesa'.");
+  }
+  const catEncontrada = estado.categorias.find(
+    (c) => c.nome.toLocaleLowerCase('pt-BR') === categoria.toLocaleLowerCase('pt-BR')
+  );
+  if (!catEncontrada) {
+    erros.push(`categoria '${categoria}' não está cadastrada.`);
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    erros.push('data deve ser uma data válida no formato AAAA-MM-DD.');
+  }
+
+  return { erros, descricao, valor, tipo, categoria: catEncontrada?.nome ?? categoria, data };
+}
+
+function calcularResumo(mes) {
+  const lista = estado.transacoes.filter((t) => !mes || t.data.startsWith(`${mes}-`));
+  let recCent = 0;
+  let despCent = 0;
+  const mapa = new Map();
+
+  for (const t of lista) {
+    const c = paraCentavos(t.valor);
+    if (t.tipo === 'receita') recCent += c;
+    else despCent += c;
+
+    const chave = `${t.tipo}:${t.categoria}`;
+    const atual = mapa.get(chave) ?? { categoria: t.categoria, tipo: t.tipo, centavos: 0, quantidade: 0 };
+    atual.centavos += c;
+    atual.quantidade += 1;
+    mapa.set(chave, atual);
+  }
+
+  const porCategoria = Array.from(mapa.values())
+    .map((x) => ({
+      categoria: x.categoria,
+      tipo: x.tipo,
+      total: paraReais(x.centavos),
+      quantidade: x.quantidade,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  return {
+    ...(mes ? { mes } : {}),
+    totalReceitas: paraReais(recCent),
+    totalDespesas: paraReais(despCent),
+    saldo: paraReais(recCent - despCent),
+    quantidadeTransacoes: lista.length,
+    porCategoria,
+  };
+}
+
+/* Renderização da Interface */
+function renderizarTudo() {
+  renderizarSelectCategorias();
+  renderizarListaCategorias();
+  renderizarTransacoes();
+  renderizarResumo();
+}
+
+function renderizarSelectCategorias() {
+  const selectForm = document.getElementById('categoria');
+  const selectFiltro = document.getElementById('filtro-categoria');
+  const valorAtualForm = selectForm.value;
+  const valorAtualFiltro = selectFiltro.value;
+
+  const ordenadas = [...estado.categorias].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  selectForm.innerHTML = ordenadas
+    .map((c) => `<option value="${c.nome}">${c.nome}</option>`)
+    .join('');
+  if (ordenadas.some((c) => c.nome === valorAtualForm)) selectForm.value = valorAtualForm;
+
+  selectFiltro.innerHTML =
+    '<option value="">Todas as categorias</option>' +
+    ordenadas.map((c) => `<option value="${c.nome}">${c.nome}</option>`).join('');
+  selectFiltro.value = valorAtualFiltro;
+}
+
+function renderizarListaCategorias() {
+  const ul = document.getElementById('lista-categorias');
+  const ordenadas = [...estado.categorias].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  ul.innerHTML = ordenadas
+    .map(
+      (c) => `
+      <li class="tag-item">
+        <span>${c.nome}</span>
+        <button class="tag-del" data-del-cat="${c.id}" title="Excluir categoria">×</button>
+      </li>`
+    )
+    .join('');
+}
+
+function renderizarTransacoes() {
+  const tbody = document.getElementById('tabela-transacoes');
+  const filtroTipo = document.getElementById('filtro-tipo').value;
+  const filtroCat = document.getElementById('filtro-categoria').value;
+  const filtroMes = document.getElementById('filtro-mes-resumo').value;
+
+  const filtradas = [...estado.transacoes]
+    .filter((t) => !filtroTipo || t.tipo === filtroTipo)
+    .filter((t) => !filtroCat || t.categoria === filtroCat)
+    .filter((t) => !filtroMes || t.data.startsWith(`${filtroMes}-`))
+    .sort((a, b) => b.data.localeCompare(a.data));
+
+  if (filtradas.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color:var(--text-muted);padding:1.5rem;">Nenhuma transação encontrada para os filtros selecionados.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtradas
+    .map(
+      (t) => `
+      <tr>
+        <td>${t.data}</td>
+        <td><strong>${t.descricao}</strong></td>
+        <td>${t.categoria}</td>
+        <td><span class="pill ${t.tipo}">${t.tipo}</span></td>
+        <td class="text-right"><strong>${formatarBRL(t.valor)}</strong></td>
+        <td class="text-center">
+          <button class="action-btn" data-edit="${t.id}" title="Editar">✏️</button>
+          <button class="action-btn" data-del="${t.id}" title="Excluir">🗑️</button>
+        </td>
+      </tr>`
+    )
+    .join('');
+}
+
+function renderizarResumo() {
+  const mes = document.getElementById('filtro-mes-resumo').value || undefined;
+  const r = calcularResumo(mes);
+
+  document.getElementById('resumo-receitas').textContent = formatarBRL(r.totalReceitas);
+  document.getElementById('resumo-despesas').textContent = formatarBRL(r.totalDespesas);
+  document.getElementById('resumo-saldo').textContent = formatarBRL(r.saldo);
+  document.getElementById('resumo-periodo-label').textContent = mes ? `Mês: ${mes}` : 'Período: Geral';
+  document.getElementById('resumo-qtd').textContent = `${r.quantidadeTransacoes} transação(ões)`;
+
+  const container = document.getElementById('resumo-categorias');
+  if (r.porCategoria.length === 0) {
+    container.innerHTML = `<p style="color:var(--text-muted);font-size:0.88rem;">Sem movimentações no período selecionado.</p>`;
+    return;
+  }
+
+  const maior = Math.max(...r.porCategoria.map((c) => c.total), 1);
+  container.innerHTML = r.porCategoria
+    .map((c) => {
+      const pct = Math.round((c.total / maior) * 100);
+      const cor = c.tipo === 'receita' ? 'var(--green)' : 'var(--red)';
+      return `
+        <div class="cat-row">
+          <div class="cat-row-header">
+            <span><strong>${c.categoria}</strong> <small style="color:var(--text-muted)">(${c.tipo} • ${c.quantidade}x)</small></span>
+            <strong>${formatarBRL(c.total)}</strong>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${pct}%;background:${cor}"></div>
+          </div>
+        </div>`;
+    })
+    .join('');
+}
+
+/* Eventos */
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('data').value = new Date().toISOString().slice(0, 10);
+  renderizarTudo();
+
+  // Abas
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+
+      if (btn.dataset.tab === 'docs' && !window.__docCarregado) {
+        carregarDocumento('./project-charter.md');
+        window.__docCarregado = true;
+      }
+      if (btn.dataset.tab === 'api') {
+        executarSimulacao('resumo');
+      }
+    });
+  });
+
+  // Cadastro / Edição de transação
+  document.getElementById('form-transacao').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const alerta = document.getElementById('alerta-erro');
+    alerta.classList.add('hidden');
+
+    const idEdicao = document.getElementById('transacao-id').value;
+    const validado = validarTransacao({
+      descricao: document.getElementById('descricao').value,
+      valor: document.getElementById('valor').value,
+      tipo: document.getElementById('tipo').value,
+      categoria: document.getElementById('categoria').value,
+      data: document.getElementById('data').value,
+    });
+
+    if (validado.erros.length > 0) {
+      alerta.innerHTML = validado.erros.map((err) => `<div>• ${err}</div>`).join('');
+      alerta.classList.remove('hidden');
+      return;
+    }
+
+    const agora = new Date().toISOString();
+    if (idEdicao) {
+      const idx = estado.transacoes.findIndex((t) => t.id === idEdicao);
+      if (idx !== -1) {
+        estado.transacoes[idx] = {
+          ...estado.transacoes[idx],
+          descricao: validado.descricao,
+          valor: validado.valor,
+          tipo: validado.tipo,
+          categoria: validado.categoria,
+          data: validado.data,
+          atualizadoEm: agora,
+        };
+      }
+    } else {
+      estado.transacoes.push({
+        id: `tx-${Date.now()}`,
+        descricao: validado.descricao,
+        valor: validado.valor,
+        tipo: validado.tipo,
+        categoria: validado.categoria,
+        data: validado.data,
+        criadoEm: agora,
+        atualizadoEm: agora,
+      });
+    }
+
+    salvarEstado();
+    sairModoEdicao();
+    renderizarTudo();
+  });
+
+  document.getElementById('btn-cancelar-edicao').addEventListener('click', sairModoEdicao);
+
+  // Ações na tabela
+  document.getElementById('tabela-transacoes').addEventListener('click', (e) => {
+    const btnEdit = e.target.closest('[data-edit]');
+    const btnDel = e.target.closest('[data-del]');
+
+    if (btnEdit) {
+      const tx = estado.transacoes.find((t) => t.id === btnEdit.dataset.edit);
+      if (!tx) return;
+      document.getElementById('transacao-id').value = tx.id;
+      document.getElementById('descricao').value = tx.descricao;
+      document.getElementById('valor').value = tx.valor;
+      document.getElementById('tipo').value = tx.tipo;
+      document.getElementById('categoria').value = tx.categoria;
+      document.getElementById('data').value = tx.data;
+      document.getElementById('form-titulo').textContent = '✏️ Editar Transação (RF05)';
+      document.getElementById('btn-cancelar-edicao').classList.remove('hidden');
+    }
+
+    if (btnDel) {
+      estado.transacoes = estado.transacoes.filter((t) => t.id !== btnDel.dataset.del);
+      salvarEstado();
+      renderizarTudo();
+    }
+  });
+
+  // Categorias
+  document.getElementById('form-categoria').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const alerta = document.getElementById('alerta-categoria');
+    alerta.classList.add('hidden');
+    const input = document.getElementById('nova-categoria');
+    const nome = input.value.trim();
+
+    if (!nome) {
+      alerta.textContent = 'Informe um nome para a categoria.';
+      alerta.classList.remove('hidden');
+      return;
+    }
+    const duplicada = estado.categorias.some(
+      (c) => c.nome.toLocaleLowerCase('pt-BR') === nome.toLocaleLowerCase('pt-BR')
+    );
+    if (duplicada) {
+      alerta.textContent = `409 Conflict: Já existe a categoria '${nome}' (RN03).`;
+      alerta.classList.remove('hidden');
+      return;
+    }
+    estado.categorias.push({ id: `cat-${Date.now()}`, nome, criadoEm: new Date().toISOString() });
+    input.value = '';
+    salvarEstado();
+    renderizarTudo();
+  });
+
+  document.getElementById('lista-categorias').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-del-cat]');
+    if (!btn) return;
+    const alerta = document.getElementById('alerta-categoria');
+    alerta.classList.add('hidden');
+
+    const cat = estado.categorias.find((c) => c.id === btn.dataset.delCat);
+    if (!cat) return;
+
+    const emUso = estado.transacoes.some(
+      (t) => t.categoria.toLocaleLowerCase('pt-BR') === cat.nome.toLocaleLowerCase('pt-BR')
+    );
+    if (emUso) {
+      alerta.textContent = `409 Conflict: A categoria '${cat.nome}' está em uso por transações e não pode ser excluída (RN02).`;
+      alerta.classList.remove('hidden');
+      return;
+    }
+    estado.categorias = estado.categorias.filter((c) => c.id !== cat.id);
+    salvarEstado();
+    renderizarTudo();
+  });
+
+  // Filtros
+  ['filtro-tipo', 'filtro-categoria', 'filtro-mes-resumo'].forEach((id) => {
+    document.getElementById(id).addEventListener('change', renderizarTudo);
+  });
+
+  document.getElementById('btn-limpar-mes').addEventListener('click', () => {
+    document.getElementById('filtro-mes-resumo').value = '';
+    renderizarTudo();
+  });
+
+  document.getElementById('btn-popular-demo').addEventListener('click', () => {
+    localStorage.removeItem(STORAGE_KEY);
+    estado = carregarEstado();
+    salvarEstado();
+    renderizarTudo();
+  });
+
+  // Documentação Markdown + Mermaid
+  document.querySelectorAll('.doc-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.doc-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      carregarDocumento(btn.dataset.doc);
+    });
+  });
+
+  // Simulador de API
+  document.querySelectorAll('[data-sim]').forEach((btn) => {
+    btn.addEventListener('click', () => executarSimulacao(btn.dataset.sim));
+  });
+});
+
+function sairModoEdicao() {
+  document.getElementById('transacao-id').value = '';
+  document.getElementById('descricao').value = '';
+  document.getElementById('valor').value = '';
+  document.getElementById('form-titulo').textContent = '➕ Nova Transação (RF01)';
+  document.getElementById('btn-cancelar-edicao').classList.add('hidden');
+}
+
+async function carregarDocumento(caminho) {
+  const viewer = document.getElementById('markdown-viewer');
+  viewer.innerHTML = '<p>Carregando documento...</p>';
+  try {
+    const resp = await fetch(caminho);
+    const md = await resp.text();
+    viewer.innerHTML = marked.parse(md);
+
+    // Converte blocos code.language-mermaid em divs .mermaid para renderização
+    viewer.querySelectorAll('pre code.language-mermaid').forEach((codeBlock) => {
+      const pre = codeBlock.parentElement;
+      const div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = codeBlock.textContent;
+      pre.replaceWith(div);
+    });
+
+    if (window.mermaid) {
+      mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+      await mermaid.run({ nodes: viewer.querySelectorAll('.mermaid') });
+    }
+  } catch (err) {
+    viewer.innerHTML = `<p class="alert alert-error">Erro ao carregar ${caminho}: ${err.message}</p>`;
+  }
+}
+
+function executarSimulacao(tipo) {
+  const statusEl = document.getElementById('sim-status');
+  const rotaEl = document.getElementById('sim-rota');
+  const outEl = document.getElementById('sim-output');
+
+  let status = 'HTTP 200 OK';
+  let rota = 'GET /health';
+  let payload = {};
+
+  if (tipo === 'health') {
+    rota = 'GET /health';
+    payload = { status: 'ok' };
+  } else if (tipo === 'categorias') {
+    rota = 'GET /categorias';
+    payload = [...estado.categorias].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  } else if (tipo === 'transacoes') {
+    rota = 'GET /transacoes';
+    payload = [...estado.transacoes].sort((a, b) => b.data.localeCompare(a.data));
+  } else if (tipo === 'resumo') {
+    const mes = document.getElementById('filtro-mes-resumo').value || undefined;
+    rota = mes ? `GET /resumo?mes=${mes}` : 'GET /resumo';
+    payload = calcularResumo(mes);
+  } else if (tipo === 'erro400') {
+    status = 'HTTP 400 Bad Request';
+    rota = 'POST /transacoes';
+    payload = {
+      erro: 'Dados inválidos.',
+      detalhes: [
+        'descricao é obrigatória e deve ter entre 1 e 100 caracteres.',
+        'valor deve ser um número maior que zero.',
+        'data deve ser uma data válida no formato AAAA-MM-DD.',
+      ],
+    };
+  }
+
+  statusEl.textContent = status;
+  statusEl.style.color = status.startsWith('HTTP 4') ? 'var(--red)' : 'var(--green)';
+  rotaEl.textContent = rota;
+  outEl.textContent = JSON.stringify(payload, null, 2);
+}
