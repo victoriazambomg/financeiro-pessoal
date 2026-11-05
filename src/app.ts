@@ -2,8 +2,13 @@ import path from 'node:path';
 import express from 'express';
 import { JsonDatabase } from './database/json-database';
 import { errorHandler, notFoundHandler } from './middlewares/error-handler';
+import { Categoria } from './models/categoria';
 import { Transacao } from './models/transacao';
+import { categoriasRouter } from './routes/categorias.routes';
+import { resumoRouter } from './routes/resumo.routes';
 import { transacoesRouter } from './routes/transacoes.routes';
+import { CategoriaService } from './services/categoria.service';
+import { ResumoService } from './services/resumo.service';
 import { TransacaoService } from './services/transacao.service';
 
 export interface AppOptions {
@@ -18,7 +23,16 @@ const DEFAULT_DATA_FILE = path.resolve(process.cwd(), process.env.DATA_FILE ?? '
  */
 export function createApp(options: AppOptions = {}) {
   const db = options.database ?? new JsonDatabase(DEFAULT_DATA_FILE);
-  const transacaoService = new TransacaoService(db.getCollection<Transacao>('transacoes'));
+  const colTransacoes = db.getCollection<Transacao>('transacoes');
+  const colCategorias = db.getCollection<Categoria>('categorias');
+
+  let transacaoService!: TransacaoService;
+  const categoriaService = new CategoriaService(colCategorias, (nome) =>
+    transacaoService.existeComCategoria(nome),
+  );
+  categoriaService.garantirPadroes();
+  transacaoService = new TransacaoService(colTransacoes, categoriaService);
+  const resumoService = new ResumoService(transacaoService);
 
   const app = express();
 
@@ -28,7 +42,9 @@ export function createApp(options: AppOptions = {}) {
     res.json({ status: 'ok' });
   });
 
+  app.use('/categorias', categoriasRouter(categoriaService));
   app.use('/transacoes', transacoesRouter(transacaoService));
+  app.use('/resumo', resumoRouter(resumoService));
 
   app.use(notFoundHandler);
   app.use(errorHandler);
