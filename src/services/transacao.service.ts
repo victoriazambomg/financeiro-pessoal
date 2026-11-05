@@ -34,6 +34,18 @@ export class TransacaoService {
     return transacao;
   }
 
+  /** RF05 — substitui os dados de uma transação, preservando id e criadoEm. */
+  atualizar(id: string, body: unknown): Transacao {
+    const atual = this.buscarPorId(id);
+    const dados = validarDadosTransacao(body);
+
+    return this.transacoes.update(id, {
+      ...atual,
+      ...dados,
+      atualizadoEm: new Date().toISOString(),
+    })!;
+  }
+
   private filtrar({ tipo, categoria, mes }: FiltrosTransacao): Transacao[] {
     const categoriaAlvo = categoria?.toLocaleLowerCase('pt-BR');
 

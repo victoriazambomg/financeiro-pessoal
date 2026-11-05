@@ -16,5 +16,9 @@ export function transacoesRouter(service: TransacaoService): Router {
     res.json(service.buscarPorId(req.params.id));
   });
 
+  router.put('/:id', (req, res) => {
+    res.json(service.atualizar(req.params.id, req.body));
+  });
+
   return router;
 }
