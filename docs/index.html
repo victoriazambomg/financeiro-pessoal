@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financeiro Pessoal — Painel Interativo & Documentação</title>
+  <meta name="description" content="Painel interativo e portal de documentação de engenharia do projeto Financeiro Pessoal (API REST Node.js + TypeScript + Express)." />
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <span class="brand-icon">🏦</span>
+        <div>
+          <h1>Financeiro Pessoal</h1>
+          <p class="subtitle">API REST &amp; Painel Interativo • Node.js + TypeScript + Express</p>
+        </div>
+      </div>
+      <div class="nav-links">
+        <button class="tab-btn active" data-tab="app">💰 Aplicação Interativa</button>
+        <button class="tab-btn" data-tab="docs">📚 Documentação (SDLC)</button>
+        <button class="tab-btn" data-tab="api">🔌 Playground da API</button>
+        <a class="gh-link" href="https://github.com/victoriazambomg/financeiro-pessoal" target="_blank" rel="noopener noreferrer">
+          GitHub ↗
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ABA 1: APLICAÇÃO INTERATIVA -->
+    <section id="tab-app" class="tab-panel active">
+      <div class="hero-banner">
+        <div>
+          <span class="badge">Release v0.5.0</span>
+          <span class="badge badge-green">Cobertura 100%</span>
+          <span class="badge badge-purple">Git Flow + SemVer</span>
+          <h2>Controle de Finanças Pessoais</h2>
+          <p>
+            Experimente abaixo todas as regras de negócio especificadas nos requisitos
+            (<strong>RF01–RF12</strong> e <strong>RNF08</strong> com cálculo exato em centavos).
+            Os dados ficam salvos no seu navegador (<code>localStorage</code>).
+          </p>
+        </div>
+        <div class="hero-actions">
+          <div class="field-inline">
+            <label for="filtro-mes-resumo">Mês do Resumo:</label>
+            <input type="month" id="filtro-mes-resumo" />
+            <button id="btn-limpar-mes" class="btn btn-secondary btn-sm" title="Ver saldo geral">Geral</button>
+          </div>
+          <button id="btn-popular-demo" class="btn btn-outline btn-sm">✨ Carregar dados de exemplo</button>
+        </div>
+      </div>
+
+      <!-- CARDS DE RESUMO (RF10 / RF11) -->
+      <div class="summary-grid">
+        <div class="card summary-card receita">
+          <span class="summary-label">Total de Receitas</span>
+          <strong id="resumo-receitas" class="summary-value">R$ 0,00</strong>
+          <small id="resumo-periodo-label">Período: Geral</small>
+        </div>
+        <div class="card summary-card despesa">
+          <span class="summary-label">Total de Despesas</span>
+          <strong id="resumo-despesas" class="summary-value">R$ 0,00</strong>
+          <small id="resumo-qtd">0 transações</small>
+        </div>
+        <div class="card summary-card saldo">
+          <span class="summary-label">Saldo do Período</span>
+          <strong id="resumo-saldo" class="summary-value">R$ 0,00</strong>
+          <small>Cálculo exato em centavos (RNF08)</small>
+        </div>
+      </div>
+
+      <div class="app-grid">
+        <!-- COLUNA ESQUERDA: FORMULÁRIO DE TRANSAÇÃO (RF01 / RF05 / RF12) + CATEGORIAS (RF07-RF09) -->
+        <div class="left-col">
+          <div class="card">
+            <h3 id="form-titulo">➕ Nova Transação (RF01)</h3>
+            <form id="form-transacao" novalidate>
+              <input type="hidden" id="transacao-id" />
+              <div class="form-group">
+                <label for="descricao">Descrição *</label>
+                <input type="text" id="descricao" placeholder="Ex.: Supermercado, Salário..." maxlength="100" required />
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="valor">Valor (R$) *</label>
+                  <input type="number" id="valor" step="0.01" min="0.01" placeholder="150.75" required />
+                </div>
+                <div class="form-group">
+                  <label for="tipo">Tipo *</label>
+                  <select id="tipo" required>
+                    <option value="despesa">📉 Despesa</option>
+                    <option value="receita">📈 Receita</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="categoria">Categoria *</label>
+                  <select id="categoria" required></select>
+                </div>
+                <div class="form-group">
+                  <label for="data">Data *</label>
+                  <input type="date" id="data" required />
+                </div>
+              </div>
+              <div id="alerta-erro" class="alert alert-error hidden"></div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="btn-salvar">Salvar Transação</button>
+                <button type="button" class="btn btn-secondary hidden" id="btn-cancelar-edicao">Cancelar Edição</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>🏷️ Categorias (RF07–RF09)</h3>
+            <form id="form-categoria" class="inline-form" novalidate>
+              <input type="text" id="nova-categoria" placeholder="Nova categoria (ex.: Pets)" maxlength="50" />
+              <button type="submit" class="btn btn-primary btn-sm">Adicionar</button>
+            </form>
+            <div id="alerta-categoria" class="alert alert-error hidden"></div>
+            <ul id="lista-categorias" class="tag-list"></ul>
+          </div>
+        </div>
+
+        <!-- COLUNA DIREITA: LISTAGEM + FILTROS (RF02-RF06) + RESUMO POR CATEGORIA (RF11) -->
+        <div class="right-col">
+          <div class="card">
+            <div class="card-header-flex">
+              <h3>📋 Transações Registradas (RF02–RF06)</h3>
+              <div class="filters-bar">
+                <select id="filtro-tipo">
+                  <option value="">Todos os tipos</option>
+                  <option value="receita">Receitas</option>
+                  <option value="despesa">Despesas</option>
+                </select>
+                <select id="filtro-categoria">
+                  <option value="">Todas as categorias</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th>Tipo</th>
+                    <th class="text-right">Valor</th>
+                    <th class="text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="tabela-transacoes"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>📊 Totais por Categoria no Período (RF11)</h3>
+            <div id="resumo-categorias" class="category-bars"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 2: DOCUMENTAÇÃO DE ENGENHARIA (PASTA docs/) -->
+    <section id="tab-docs" class="tab-panel">
+      <div class="docs-layout">
+        <aside class="docs-sidebar card">
+          <h3>📁 Artefatos SDLC</h3>
+          <p class="docs-hint">Selecione um documento do repositório para visualizá-lo renderizado com diagramas Mermaid:</p>
+          <ul class="docs-menu">
+            <li><button class="doc-btn active" data-doc="./project-charter.md">📜 Project Charter</button></li>
+            <li><button class="doc-btn" data-doc="./requisitos.md">📋 Requisitos (RF / RNF)</button></li>
+            <li><button class="doc-btn" data-doc="./casos-de-uso.md">🎭 Casos de Uso</button></li>
+            <li><button class="doc-btn" data-doc="./user-stories.md">📖 User Stories (BDD)</button></li>
+            <li><button class="doc-btn" data-doc="./arquitetura.md">🏗️ Arquitetura (C4 / DER)</button></li>
+          </ul>
+        </aside>
+        <article class="docs-content card">
+          <div id="markdown-viewer" class="markdown-body">Carregando documentação...</div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ABA 3: PLAYGROUND / REFERÊNCIA DA API -->
+    <section id="tab-api" class="tab-panel">
+      <div class="card">
+        <h3>🔌 Endpoints da API REST</h3>
+        <p>A API Express implementa os contratos abaixo. Clique em <strong>Simular</strong> para executar a chamada no motor local e inspecionar a resposta JSON padronizada:</p>
+        <div class="endpoints-list">
+          <div class="endpoint-item">
+            <span class="method get">GET</span>
+            <code>/health</code>
+            <span class="ep-desc">Status de saúde da aplicação (RNF03)</span>
+            <button class="btn btn-sm btn-outline" data-sim="health">Simular</button>
+          </div>
+          <div class="endpoint-item">
+            <span class="method get">GET</span>
+            <code>/categorias</code>
+            <span class="ep-desc">Lista todas as categorias em ordem alfabética (RF07)</span>
+            <button class="btn btn-sm btn-outline" data-sim="categorias">Simular</button>
+          </div>
+          <div class="endpoint-item">
+            <span class="method get">GET</span>
+            <code>/transacoes</code>
+            <span class="ep-desc">Lista transações ordenadas por data decrescente (RF02, RF03)</span>
+            <button class="btn btn-sm btn-outline" data-sim="transacoes">Simular</button>
+          </div>
+          <div class="endpoint-item">
+            <span class="method get">GET</span>
+            <code>/resumo</code>
+            <span class="ep-desc">Saldo geral e totais agrupados por categoria (RF10, RF11)</span>
+            <button class="btn btn-sm btn-outline" data-sim="resumo">Simular</button>
+          </div>
+          <div class="endpoint-item">
+            <span class="method post">POST</span>
+            <code>/transacoes (payload inválido)</code>
+            <span class="ep-desc">Demonstra validação RF12 e retorno HTTP 400 padronizado (RNF04)</span>
+            <button class="btn btn-sm btn-outline" data-sim="erro400">Simular 400</button>
+          </div>
+        </div>
+        <div class="console-box">
+          <div class="console-header">
+            <span id="sim-status">HTTP 200 OK</span>
+            <small id="sim-rota">GET /resumo</small>
+          </div>
+          <pre id="sim-output"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>Financeiro Pessoal • Desenvolvido por <strong>Victoria</strong> • Licença MIT</span>
+      <span>
+        <a href="https://github.com/victoriazambomg/financeiro-pessoal/issues" target="_blank" rel="noopener">Backlog (18 Issues)</a> •
+        <a href="https://github.com/victoriazambomg/financeiro-pessoal/releases" target="_blank" rel="noopener">Releases SemVer</a>
+      </span>
+    </div>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>

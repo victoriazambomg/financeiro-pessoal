@@ -1,5 +1,6 @@
 # 🏦 Financeiro Pessoal — API de Controle de Finanças Pessoais
 
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Online-0ea5e9?logo=github)](https://victoriazambomg.github.io/financeiro-pessoal/)
 [![CI](https://github.com/victoriazambomg/financeiro-pessoal/actions/workflows/ci.yml/badge.svg)](https://github.com/victoriazambomg/financeiro-pessoal/actions/workflows/ci.yml)
 [![Versão](https://img.shields.io/github/v/release/victoriazambomg/financeiro-pessoal?label=vers%C3%A3o&color=blue)](https://github.com/victoriazambomg/financeiro-pessoal/releases)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-green.svg)](./LICENSE)
@@ -9,6 +10,12 @@
 
 ---
 
+> 🌐 **Acesse a Aplicação Interativa e Documentação no GitHub Pages:**
+> **[https://victoriazambomg.github.io/financeiro-pessoal/](https://victoriazambomg.github.io/financeiro-pessoal/)**
+
+---
+
+
 ## 📌 O Problema e a Solução
 
 Controlar para onde vai o dinheiro todos os meses costuma esbarrar em dois extremos: planilhas manuais que exigem manutenção de fórmulas ou aplicativos comerciais complexos que cobram assinaturas e exigem compartilhamento de dados bancários.
@@ -16,6 +23,12 @@ Controlar para onde vai o dinheiro todos os meses costuma esbarrar em dois extre
 O **Financeiro Pessoal** resolve esse problema oferecendo uma **API REST leve, aberta e auto-hospedável** desenvolvida em **Node.js + TypeScript + Express**. Com ela é possível registrar receitas e despesas classificadas por categoria, filtrar movimentações por período e obter instantaneamente o saldo geral e o resumo mensal detalhado por categoria — tudo com persistência local atômica em JSON, sem necessidade de configurar servidores de banco de dados.
 
 ---
+
+> 🌐 **Acesse a Aplicação Interativa e Documentação no GitHub Pages:**
+> **[https://victoriazambomg.github.io/financeiro-pessoal/](https://victoriazambomg.github.io/financeiro-pessoal/)**
+
+---
+
 
 ## ✨ Funcionalidades: Implementadas vs. Planejadas
 
@@ -43,6 +56,12 @@ O **Financeiro Pessoal** resolve esse problema oferecendo uma **API REST leve, a
 
 ---
 
+> 🌐 **Acesse a Aplicação Interativa e Documentação no GitHub Pages:**
+> **[https://victoriazambomg.github.io/financeiro-pessoal/](https://victoriazambomg.github.io/financeiro-pessoal/)**
+
+---
+
+
 ## 📚 Documentação de Engenharia (`docs/`)
 
 Toda a especificação e modelagem do projeto está documentada na pasta [`docs/`](./docs):
@@ -58,6 +77,12 @@ Toda a especificação e modelagem do projeto está documentada na pasta [`docs/
 
 ---
 
+> 🌐 **Acesse a Aplicação Interativa e Documentação no GitHub Pages:**
+> **[https://victoriazambomg.github.io/financeiro-pessoal/](https://victoriazambomg.github.io/financeiro-pessoal/)**
+
+---
+
+
 ## 🛠️ Tecnologias Utilizadas
 
 - **Runtime:** [Node.js](https://nodejs.org/) (v20+)
@@ -68,6 +93,12 @@ Toda a especificação e modelagem do projeto está documentada na pasta [`docs/
 - **CI/CD:** [GitHub Actions](./.github/workflows/ci.yml)
 
 ---
+
+> 🌐 **Acesse a Aplicação Interativa e Documentação no GitHub Pages:**
+> **[https://victoriazambomg.github.io/financeiro-pessoal/](https://victoriazambomg.github.io/financeiro-pessoal/)**
+
+---
+
 
 ## 📂 Estrutura do Repositório
 
@@ -121,6 +152,12 @@ financeiro-pessoal/
 
 ---
 
+> 🌐 **Acesse a Aplicação Interativa e Documentação no GitHub Pages:**
+> **[https://victoriazambomg.github.io/financeiro-pessoal/](https://victoriazambomg.github.io/financeiro-pessoal/)**
+
+---
+
+
 ## 🚀 Configuração, Instalação e Execução Local
 
 ### Pré-requisitos
@@ -160,6 +197,12 @@ npm start
 
 ---
 
+> 🌐 **Acesse a Aplicação Interativa e Documentação no GitHub Pages:**
+> **[https://victoriazambomg.github.io/financeiro-pessoal/](https://victoriazambomg.github.io/financeiro-pessoal/)**
+
+---
+
+
 ## 🧪 Execução dos Testes
 
 ```bash
@@ -174,6 +217,12 @@ npm run typecheck
 ```
 
 ---
+
+> 🌐 **Acesse a Aplicação Interativa e Documentação no GitHub Pages:**
+> **[https://victoriazambomg.github.io/financeiro-pessoal/](https://victoriazambomg.github.io/financeiro-pessoal/)**
+
+---
+
 
 ## 🔌 Exemplos de Uso da API
 
@@ -232,6 +281,12 @@ Resposta:
 
 ---
 
+> 🌐 **Acesse a Aplicação Interativa e Documentação no GitHub Pages:**
+> **[https://victoriazambomg.github.io/financeiro-pessoal/](https://victoriazambomg.github.io/financeiro-pessoal/)**
+
+---
+
+
 ## 🌿 Fluxo de Branches (Git Flow) e Padrões de Versionamento
 
 O desenvolvimento segue o **Git Flow**, com commits atômicos no padrão **Conventional Commits** e **Versionamento Semântico (SemVer)**:
@@ -271,6 +326,12 @@ Todos os commits são atômicos e referenciam a Issue correspondente:
 - `chore(escopo): descrição (#issue)` — manutenção e setup
 
 ---
+
+> 🌐 **Acesse a Aplicação Interativa e Documentação no GitHub Pages:**
+> **[https://victoriazambomg.github.io/financeiro-pessoal/](https://victoriazambomg.github.io/financeiro-pessoal/)**
+
+---
+
 
 ## 📄 Licença
 
