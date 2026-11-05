@@ -5,8 +5,10 @@ import { errorHandler, notFoundHandler } from './middlewares/error-handler';
 import { Categoria } from './models/categoria';
 import { Transacao } from './models/transacao';
 import { categoriasRouter } from './routes/categorias.routes';
+import { resumoRouter } from './routes/resumo.routes';
 import { transacoesRouter } from './routes/transacoes.routes';
 import { CategoriaService } from './services/categoria.service';
+import { ResumoService } from './services/resumo.service';
 import { TransacaoService } from './services/transacao.service';
 
 export interface AppOptions {
@@ -30,6 +32,7 @@ export function createApp(options: AppOptions = {}) {
   );
   categoriaService.garantirPadroes();
   transacaoService = new TransacaoService(colTransacoes, categoriaService);
+  const resumoService = new ResumoService(transacaoService);
 
   const app = express();
 
@@ -41,6 +44,7 @@ export function createApp(options: AppOptions = {}) {
 
   app.use('/categorias', categoriasRouter(categoriaService));
   app.use('/transacoes', transacoesRouter(transacaoService));
+  app.use('/resumo', resumoRouter(resumoService));
 
   app.use(notFoundHandler);
   app.use(errorHandler);
