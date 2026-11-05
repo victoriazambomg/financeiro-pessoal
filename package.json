@@ -1,6 +1,6 @@
 {
   "name": "financeiro-pessoal",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "API REST para controle de finanças pessoais: receitas, despesas, categorias e resumo mensal.",
   "main": "dist/server.js",
   "scripts": {
