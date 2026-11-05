@@ -8,5 +8,13 @@ export function transacoesRouter(service: TransacaoService): Router {
     res.status(201).json(service.criar(req.body));
   });
 
+  router.get('/', (req, res) => {
+    res.json(service.listar(req.query));
+  });
+
+  router.get('/:id', (req, res) => {
+    res.json(service.buscarPorId(req.params.id));
+  });
+
   return router;
 }
