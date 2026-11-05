@@ -1,8 +1,15 @@
 import { ValidationError } from '../errors/app-error';
 import { DadosTransacao, TIPOS_TRANSACAO, TipoTransacao } from '../models/transacao';
-import { isDataValida, isObjeto, temNoMaximoDuasCasas, textoLimpo } from './common';
+import { isDataValida, isMesValido, isObjeto, temNoMaximoDuasCasas, textoLimpo } from './common';
 
 const VALOR_MAXIMO = 1_000_000_000;
+
+/** Filtros aceitos em GET /transacoes (RF03). */
+export interface FiltrosTransacao {
+  tipo?: TipoTransacao;
+  categoria?: string;
+  mes?: string;
+}
 
 /**
  * Valida o corpo de criação/edição de transação (RF12).
@@ -51,4 +58,30 @@ export function validarDadosTransacao(body: unknown): DadosTransacao {
     categoria,
     data: data as string,
   };
+}
+
+/** Valida os parâmetros de query de listagem (RF03). Parâmetros ausentes são ignorados. */
+export function validarFiltros(query: unknown): FiltrosTransacao {
+  const q = isObjeto(query) ? query : {};
+  const erros: string[] = [];
+  const filtros: FiltrosTransacao = {};
+
+  if (q.tipo !== undefined) {
+    if (TIPOS_TRANSACAO.includes(q.tipo as TipoTransacao)) filtros.tipo = q.tipo as TipoTransacao;
+    else erros.push("filtro tipo deve ser 'receita' ou 'despesa'.");
+  }
+
+  if (q.categoria !== undefined) {
+    const categoria = textoLimpo(q.categoria);
+    if (categoria) filtros.categoria = categoria;
+    else erros.push('filtro categoria não pode ser vazio.');
+  }
+
+  if (q.mes !== undefined) {
+    if (isMesValido(q.mes)) filtros.mes = q.mes;
+    else erros.push('filtro mes deve estar no formato AAAA-MM.');
+  }
+
+  if (erros.length > 0) throw new ValidationError(erros, 'Filtros inválidos.');
+  return filtros;
 }
