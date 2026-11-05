@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    name: Typecheck, Build e Testes (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Verificar tipos (TypeScript strict)
+        run: npm run typecheck
+
+      - name: Compilar projeto
+        run: npm run build
+
+      - name: Executar testes com cobertura (>= 80%)
+        run: npm run test:coverage
