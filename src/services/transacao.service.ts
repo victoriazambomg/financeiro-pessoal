@@ -46,6 +46,11 @@ export class TransacaoService {
     })!;
   }
 
+  /** RF06 — exclui uma transação. */
+  excluir(id: string): void {
+    if (!this.transacoes.delete(id)) throw new NotFoundError('Transação');
+  }
+
   private filtrar({ tipo, categoria, mes }: FiltrosTransacao): Transacao[] {
     const categoriaAlvo = categoria?.toLocaleLowerCase('pt-BR');
 

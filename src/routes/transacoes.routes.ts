@@ -20,5 +20,10 @@ export function transacoesRouter(service: TransacaoService): Router {
     res.json(service.atualizar(req.params.id, req.body));
   });
 
+  router.delete('/:id', (req, res) => {
+    service.excluir(req.params.id);
+    res.status(204).send();
+  });
+
   return router;
 }
