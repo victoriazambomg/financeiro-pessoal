@@ -6,6 +6,14 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ---
 
+## [v0.5.0] - 2026-11-05 — Portal Interativo no GitHub Pages
+
+### Adicionado
+- Painel web interativo (`docs/index.html`, `docs/app.js`, `docs/styles.css`) publicado no GitHub Pages com simulação completa das regras de negócio (RF01–RF12 e RNF08), visualizador dos artefatos Markdown/Mermaid e playground da API (#39).
+- Workflow `.github/workflows/pages.yml` para publicação contínua no GitHub Pages (#39).
+
+---
+
 ## [v0.4.0] - 2026-11-05 — Qualidade e Documentação
 
 ### Adicionado
