@@ -6,24 +6,40 @@ export interface Entity {
   id: string;
 }
 
+/**
+ * Contrato de repositório desacoplado do mecanismo de armazenamento (`[DATA-LOCK]`).
+ * Permite substituir `Collection<T>` (JSON) por uma implementação SQLite sem alterar os serviços.
+ */
+export interface Repository<T extends Entity> {
+  findAll(): T[];
+  findById(id: string): T | undefined;
+  insert(item: T): T;
+  update(id: string, item: T): T | undefined;
+  delete(id: string): boolean;
+  count(): number;
+}
+
 type DatabaseState = Record<string, Entity[]>;
 
 /**
- * Banco de dados simples baseado em arquivo JSON (RNF01).
+ * Banco de dados baseado em arquivo JSON (RNF01) com controle de concorrência (`[DATA-LOCK]`).
  *
- * - Carrega o arquivo uma única vez na inicialização e mantém o estado em memória.
- * - Cada escrita é atômica: grava em um arquivo temporário e depois renomeia,
- *   evitando arquivos corrompidos caso o processo seja interrompido.
+ * - Carrega o arquivo na inicialização e mantém o estado sincronizado em memória.
+ * - Escrita atômica com arquivo temporário exclusivo por operação + rename.
+ * - Fila/mutex de exclusão mútua (`runExclusive`) que serializa operações concorrentes
+ *   (ex.: 20 requisições `POST /transacoes` simultâneas sem perda de registros).
  * - Sem `filePath`, opera somente em memória (útil para testes).
  */
 export class JsonDatabase {
   private readonly state: DatabaseState;
+  private writeQueue: Promise<void> = Promise.resolve();
+  private writeSeq = 0;
 
   constructor(private readonly filePath?: string) {
     this.state = this.load();
   }
 
-  /** Retorna uma coleção tipada (equivalente a uma "tabela"). */
+  /** Retorna uma coleção tipada que implementa `Repository<T>`. */
   getCollection<T extends Entity>(name: string): Collection<T> {
     return new Collection<T>(this, name);
   }
@@ -36,12 +52,26 @@ export class JsonDatabase {
     return this.state[name] as T[];
   }
 
-  /** Persiste o estado atual no disco (no-op em modo memória). */
+  /**
+   * Executa uma tarefa na fila de exclusão mútua (mutex), garantindo que
+   * operações concorrentes sejam processadas em série sem condição de corrida.
+   */
+  runExclusive<R>(task: () => R | Promise<R>): Promise<R> {
+    const next = this.writeQueue.then(() => task());
+    this.writeQueue = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  }
+
+  /** Persiste o estado atual no disco de forma atômica (no-op em modo memória). */
   save(): void {
     if (!this.filePath) return;
 
+    this.writeSeq += 1;
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
-    const tmpFile = `${this.filePath}.tmp`;
+    const tmpFile = `${this.filePath}.${process.pid}.${this.writeSeq}.tmp`;
     fs.writeFileSync(tmpFile, JSON.stringify(this.state, null, 2), 'utf-8');
     fs.renameSync(tmpFile, this.filePath);
   }
@@ -61,10 +91,10 @@ export class JsonDatabase {
 }
 
 /**
- * Coleção de entidades com operações CRUD.
+ * Coleção de entidades com operações CRUD que implementa `Repository<T>`.
  * Sempre retorna cópias para que alterações externas não modifiquem o estado sem `save()`.
  */
-export class Collection<T extends Entity> {
+export class Collection<T extends Entity> implements Repository<T> {
   constructor(
     private readonly db: JsonDatabase,
     private readonly name: string,
@@ -83,6 +113,16 @@ export class Collection<T extends Entity> {
     this.items().push({ ...item });
     this.db.save();
     return { ...item };
+  }
+
+  /** Insere múltiplos registros em lote com uma única gravação em disco (útil para seeds). */
+  insertMany(novos: T[]): number {
+    const lista = this.items();
+    for (const item of novos) {
+      lista.push({ ...item });
+    }
+    this.db.save();
+    return novos.length;
   }
 
   update(id: string, item: T): T | undefined {

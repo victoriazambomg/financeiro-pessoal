@@ -1,0 +1,419 @@
+openapi: 3.0.3
+info:
+  title: Financeiro Pessoal API
+  version: 0.6.0
+  description: >
+    API REST para controle de finanças pessoais: cadastro, consulta, filtragem, edição e exclusão de
+    transações (receitas e despesas), gerenciamento de categorias com proteção de integridade e
+    cálculo de saldo geral e resumo mensal em centavos inteiros.
+  contact:
+    name: Victória de Gouveia Zambom
+    url: https://github.com/victoriazambomg/financeiro-pessoal
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Servidor local de desenvolvimento
+
+tags:
+  - name: Saúde
+    description: Verificação de disponibilidade da API (RNF03)
+  - name: Transações
+    description: Operações CRUD e filtragem de receitas e despesas (RF01–RF06, RF12)
+  - name: Categorias
+    description: Listagem, criação e exclusão segura de categorias (RF07–RF09)
+  - name: Resumo
+    description: Saldo geral e resumo financeiro mensal por categoria (RF10, RF11, RNF08)
+
+paths:
+  /health:
+    get:
+      tags: [Saúde]
+      summary: Verifica a saúde da aplicação (RNF03)
+      operationId: getHealth
+      responses:
+        '200':
+          description: Aplicação operacional
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /transacoes:
+    post:
+      tags: [Transações]
+      summary: Cadastra uma nova transação (RF01, RF12)
+      operationId: criarTransacao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DadosTransacao'
+            example:
+              descricao: Supermercado
+              valor: 150.75
+              tipo: despesa
+              categoria: Alimentação
+              data: '2026-11-05'
+      responses:
+        '201':
+          description: Transação criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transacao'
+        '400':
+          $ref: '#/components/responses/ErroValidacao400'
+        '413':
+          $ref: '#/components/responses/ErroPayload413'
+
+    get:
+      tags: [Transações]
+      summary: Lista e filtra transações ordenadas por data decrescente (RF02, RF03)
+      operationId: listarTransacoes
+      parameters:
+        - name: tipo
+          in: query
+          description: Filtra por tipo de transação
+          schema:
+            type: string
+            enum: [receita, despesa]
+        - name: categoria
+          in: query
+          description: Filtra pelo nome da categoria (case-insensitive)
+          schema:
+            type: string
+            example: Alimentação
+        - name: mes
+          in: query
+          description: Filtra pelo mês de referência no formato AAAA-MM
+          schema:
+            type: string
+            pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+            example: '2026-11'
+      responses:
+        '200':
+          description: Lista de transações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transacao'
+        '400':
+          $ref: '#/components/responses/ErroValidacao400'
+
+  /transacoes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Identificador único (UUID) da transação
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Transações]
+      summary: Consulta uma transação pelo ID (RF04)
+      operationId: buscarTransacaoPorId
+      responses:
+        '200':
+          description: Transação encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transacao'
+        '404':
+          $ref: '#/components/responses/ErroNaoEncontrado404'
+
+    put:
+      tags: [Transações]
+      summary: Edita uma transação existente (RF05, RF12)
+      operationId: atualizarTransacao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DadosTransacao'
+      responses:
+        '200':
+          description: Transação atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transacao'
+        '400':
+          $ref: '#/components/responses/ErroValidacao400'
+        '404':
+          $ref: '#/components/responses/ErroNaoEncontrado404'
+
+    delete:
+      tags: [Transações]
+      summary: Exclui uma transação existente (RF06)
+      operationId: excluirTransacao
+      responses:
+        '204':
+          description: Transação excluída com sucesso (sem conteúdo)
+        '404':
+          $ref: '#/components/responses/ErroNaoEncontrado404'
+
+  /categorias:
+    get:
+      tags: [Categorias]
+      summary: Lista todas as categorias em ordem alfabética (RF07)
+      operationId: listarCategorias
+      responses:
+        '200':
+          description: Lista de categorias (inclui as 8 categorias padrão)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Categoria'
+
+    post:
+      tags: [Categorias]
+      summary: Cadastra uma nova categoria (RF08)
+      operationId: criarCategoria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome]
+              properties:
+                nome:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+                  example: Pets
+      responses:
+        '201':
+          description: Categoria criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Categoria'
+        '400':
+          $ref: '#/components/responses/ErroValidacao400'
+        '409':
+          $ref: '#/components/responses/ErroConflito409'
+
+  /categorias/{id}:
+    delete:
+      tags: [Categorias]
+      summary: Exclui uma categoria que não esteja em uso (RF09, RN02)
+      operationId: excluirCategoria
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador único da categoria
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Categoria excluída com sucesso
+        '404':
+          $ref: '#/components/responses/ErroNaoEncontrado404'
+        '409':
+          $ref: '#/components/responses/ErroConflito409'
+
+  /resumo:
+    get:
+      tags: [Resumo]
+      summary: Retorna o saldo geral ou o resumo financeiro de um mês (RF10, RF11, RNF08)
+      operationId: obterResumo
+      parameters:
+        - name: mes
+          in: query
+          required: false
+          description: Mês de referência no formato AAAA-MM
+          schema:
+            type: string
+            pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+            example: '2026-11'
+      responses:
+        '200':
+          description: Resumo financeiro calculado em centavos inteiros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumoFinanceiro'
+        '400':
+          $ref: '#/components/responses/ErroValidacao400'
+
+components:
+  schemas:
+    DadosTransacao:
+      type: object
+      required: [descricao, valor, tipo, categoria, data]
+      properties:
+        descricao:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Supermercado
+        valor:
+          type: number
+          minimum: 0.01
+          maximum: 1000000000
+          example: 150.75
+        tipo:
+          type: string
+          enum: [receita, despesa]
+          example: despesa
+        categoria:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: Alimentação
+        data:
+          type: string
+          format: date
+          example: '2026-11-05'
+
+    Transacao:
+      allOf:
+        - $ref: '#/components/schemas/DadosTransacao'
+        - type: object
+          required: [id, criadoEm, atualizadoEm]
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: 6f1c9a12-4b7d-4e92-8c1a-9b2d3e4f5a6b
+            criadoEm:
+              type: string
+              format: date-time
+              example: '2026-11-05T19:10:00.000Z'
+            atualizadoEm:
+              type: string
+              format: date-time
+              example: '2026-11-05T19:10:00.000Z'
+
+    Categoria:
+      type: object
+      required: [id, nome, criadoEm]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nome:
+          type: string
+          example: Alimentação
+        criadoEm:
+          type: string
+          format: date-time
+
+    ResumoCategoria:
+      type: object
+      required: [categoria, tipo, total, quantidade]
+      properties:
+        categoria:
+          type: string
+          example: Alimentação
+        tipo:
+          type: string
+          enum: [receita, despesa]
+        total:
+          type: number
+          example: 200.5
+        quantidade:
+          type: integer
+          example: 1
+
+    ResumoFinanceiro:
+      type: object
+      required: [totalReceitas, totalDespesas, saldo, quantidadeTransacoes, porCategoria]
+      properties:
+        mes:
+          type: string
+          example: '2026-11'
+        totalReceitas:
+          type: number
+          example: 3000
+        totalDespesas:
+          type: number
+          example: 1200.5
+        saldo:
+          type: number
+          example: 1799.5
+        quantidadeTransacoes:
+          type: integer
+          example: 3
+        porCategoria:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResumoCategoria'
+
+    ErrorBody:
+      type: object
+      required: [erro, codigo]
+      properties:
+        erro:
+          type: string
+          example: Dados inválidos.
+        codigo:
+          type: string
+          example: VALIDATION_ERROR
+        detalhes:
+          type: array
+          items:
+            type: string
+          example:
+            - valor deve ser um número maior que zero.
+            - data deve ser uma data válida no formato AAAA-MM-DD.
+
+  responses:
+    ErroValidacao400:
+      description: Dados de entrada ou parâmetros inválidos (RF12)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            erro: Dados inválidos.
+            codigo: VALIDATION_ERROR
+            detalhes:
+              - valor deve ser um número maior que zero.
+    ErroNaoEncontrado404:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            erro: Transação não encontrado(a).
+            codigo: NOT_FOUND
+    ErroConflito409:
+      description: Conflito com o estado atual (duplicidade ou categoria em uso)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            erro: A categoria 'Alimentação' está em uso por transações e não pode ser excluída.
+            codigo: CONFLICT
+    ErroPayload413:
+      description: Corpo da requisição excede o limite de 100kb (RNF07)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            erro: Corpo da requisição excede o limite de 100kb.
+            codigo: PAYLOAD_TOO_LARGE
