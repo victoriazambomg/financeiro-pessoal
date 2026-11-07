@@ -6,11 +6,24 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.
 
 ---
 
+## [v0.6.0] - 2026-11-07 — Rastreabilidade N3, Desempenho RNF02, OpenAPI, Concorrência e Redesign Visual
+
+### Adicionado
+- **Rastreabilidade Nível N3 (`[TRC-TST]`)**: criação de `docs/rastreabilidade.md` e expansão de `docs/requisitos.md` §4 vinculando todos os `RF01–RF12` e `RNF01–RNF09` aos casos de uso, user stories, issues, código-fonte (`src/`) e arquivos de teste (`tests/`).
+- **Badge e Artefato Real de Cobertura (`[QA-BADGE]`)**: geração de `docs/coverage-badge.svg` a partir de `coverage-summary.json`/`lcov` via `scripts/generate-coverage-badge.js` e publicação do artefato `lcov` no GitHub Actions.
+- **Benchmark Automatizado de Desempenho (`[PERF-RNF02]`)**: suíte `tests/performance/rnf02-desempenho.test.ts` validando listagem, filtragem e resumo sobre **10.000 transações em menos de 200 ms** e job dedicado no CI.
+- **Controle de Concorrência (`[DATA-LOCK]`)**: fila de exclusão mútua (`runExclusive`), arquivos temporários exclusivos por escrita, contrato `Repository<T>` pronto para SQLite e teste de **20 requisições `POST /transacoes` simultâneas**.
+- **Especificação OpenAPI 3.0.3 (`[API-DOC]`)**: contrato `docs/openapi.yaml` das 9 rotas e integração do **Swagger UI** no portal do GitHub Pages.
+- **Governança e DevSecOps (`[GOV-TPL]`, `[DOC-CTB]`, `[SEC-SCAN]`, `[DEP-BOT]`, `[ENV-EX]`, `[DOC-IDX]`)**: adição de `CONTRIBUTING.md`, `docs/README.md`, `.env.example`, `.github/dependabot.yml`, templates de Issue/PR e job de auditoria no CI.
+- **Redesign Visual do Portal (GitHub Pages)**: nova interface fintech com alternância de tema claro/escuro, 4 cards de KPIs, gráfico de rosca SVG interativo, busca instantânea, exportação CSV, Swagger UI e benchmark ao vivo no navegador.
+
+---
+
 ## [v0.5.0] - 2026-11-05 — Portal Interativo no GitHub Pages
 
 ### Adicionado
-- Painel web interativo (`docs/index.html`, `docs/app.js`, `docs/styles.css`) publicado no GitHub Pages com simulação completa das regras de negócio (RF01–RF12 e RNF08), visualizador dos artefatos Markdown/Mermaid e playground da API (#39).
-- Workflow `.github/workflows/pages.yml` para publicação contínua no GitHub Pages (#39).
+- Painel web interativo (`docs/index.html`, `docs/app.js`, `docs/styles.css`) publicado no GitHub Pages com simulação completa das regras de negócio (RF01–RF12 e RNF08), visualizador dos artefatos Markdown/Mermaid e playground da API (#40).
+- Workflow `.github/workflows/pages.yml` para publicação contínua no GitHub Pages (#40).
 
 ---
 
