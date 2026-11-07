@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-test:
-    name: Typecheck, Build e Testes (Node ${{ matrix.node-version }})
+    name: Typecheck, Build e Cobertura (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -34,5 +34,58 @@ jobs:
       - name: Compilar projeto
         run: npm run build
 
-      - name: Executar testes com cobertura (>= 80%)
+      - name: Executar testes com cobertura (>= 80% + lcov)
         run: npm run test:coverage
+
+      - name: Gerar badge a partir do relatório real (lcov / coverage-summary)
+        run: node scripts/generate-coverage-badge.js
+
+      - name: Publicar relatório lcov como artefato do CI
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov-node-${{ matrix.node-version }}
+          path: coverage/
+
+  performance-rnf02:
+    name: Desempenho RNF02 (10.000 transações < 200 ms)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Executar benchmark automatizado RNF02
+        run: npx jest tests/performance/rnf02-desempenho.test.ts --verbose
+
+  security-audit:
+    name: Auditoria de Dependências e Segredos (DevSecOps)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Auditar dependências de produção (npm audit)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Verificar ausência de arquivos .env ou chaves privadas versionadas
+        run: |
+          if git ls-files | grep -E '(^\.env$|id_rsa|\.pem$)'; then
+            echo "Erro: Arquivo sensível versionado no Git!"
+            exit 1
+          fi
